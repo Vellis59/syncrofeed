@@ -39,6 +39,27 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Fever API
+
+Syncrofeed exposes a basic Fever-compatible API at:
+
+```text
+POST /api/fever
+```
+
+Set a password with:
+
+```bash
+SYNCROFEED_FEVER_PASSWORD=yourpassword
+```
+
+Then use:
+- **Username**: `admin`
+- **Password**: your `SYNCROFEED_FEVER_PASSWORD`
+- **Endpoint**: `http://localhost:3000/api/fever`
+
+This enables compatibility with Fever clients like Reeder or Fiery Feeds.
+
 ## Project Status
 
 🚧 Early development — foundations being built.
