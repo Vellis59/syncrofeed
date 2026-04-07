@@ -1,0 +1,3 @@
+module.exports=[4634,a=>{"use strict";var b=a.i(89890);a.s(["default",0,function({children:a}){return(0,b.jsx)("html",{lang:"en",children:(0,b.jsx)("body",{className:"antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100",children:a})})},"metadata",0,{title:"Syncrofeed — A modern RSS reader",description:"Self-hosted, AI-enhanced RSS reader with Fever API compatibility. Read smarter, not harder."}])},68950,a=>{a.n(a.i(4634))}];
+
+//# sourceMappingURL=_openclaw_workspace_projects_syncrofeed_src_app_layout_tsx_0bvh3o-._.js.map
