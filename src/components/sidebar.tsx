@@ -9,6 +9,7 @@ interface SidebarProps {
   onAddFeed: () => void;
   onDeleteFeed: (id: number) => void;
   onRefreshFeed: (id: number) => void;
+  onImportComplete: () => void;
   filterUnread: boolean;
   filterStarred: boolean;
   onToggleUnread: () => void;
@@ -28,6 +29,7 @@ export function Sidebar({
   onToggleUnread,
   onToggleStarred,
   onClearFilter,
+  onImportComplete,
 }: SidebarProps) {
   return (
     <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 bg-zinc-50 dark:bg-zinc-900">
@@ -82,6 +84,42 @@ export function Sidebar({
         >
           ⭐ Starred
         </button>
+      </div>
+
+      {/* Import/Export */}
+      <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex gap-2">
+          <label className="flex-1 text-center px-2 py-1.5 text-xs rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+            📥 Import OPML
+            <input
+              type="file"
+              accept=".xml,.opml"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append("file", file);
+                try {
+                  const res = await fetch("/api/opml", { method: "POST", body: formData });
+                  const result = await res.json();
+                  alert(`Imported: ${result.imported}, Skipped: ${result.skipped}`);
+                  onImportComplete();
+                } catch {
+                  alert("Import failed");
+                }
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <a
+            href="/api/opml"
+            download
+            className="flex-1 text-center px-2 py-1.5 text-xs rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+          >
+            📤 Export OPML
+          </a>
+        </div>
       </div>
 
       {/* Feeds */}

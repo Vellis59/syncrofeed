@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { feeds, articles } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { fetchFeed } from "@/lib/feed-fetcher";
+import { fetchFeed, discoverFeedUrl } from "@/lib/feed-fetcher";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +22,25 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const parsed = await fetchFeed(url);
+    // Try direct feed URL first, then auto-discover
+    let feedUrl = url;
+    try {
+      await fetchFeed(url);
+    } catch {
+      const discovered = await discoverFeedUrl(url);
+      if (!discovered) {
+        return NextResponse.json({ error: "Could not find a feed at this URL" }, { status: 422 });
+      }
+      feedUrl = discovered;
+    }
+
+    const parsed = await fetchFeed(feedUrl);
 
     const [feed] = await db
       .insert(feeds)
       .values({
         title: parsed.title,
-        url,
+        url: feedUrl,
         siteUrl: parsed.siteUrl,
         description: parsed.description,
         lastFetchedAt: new Date(),

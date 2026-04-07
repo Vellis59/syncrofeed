@@ -106,6 +106,10 @@ export default function AppPage() {
         onAddFeed={() => setShowAddFeed(true)}
         onDeleteFeed={handleDeleteFeed}
         onRefreshFeed={handleRefreshFeed}
+        onImportComplete={async () => {
+          await loadFeeds();
+          await loadArticles();
+        }}
         filterUnread={filterUnread}
         filterStarred={filterStarred}
         onToggleUnread={() => setFilterUnread(!filterUnread)}
