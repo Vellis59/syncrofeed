@@ -37,12 +37,10 @@ export default function Home() {
           </p>
           <div className="flex items-center justify-center gap-4 pt-4">
             <a
-              href="https://github.com/Vellis59/syncrofeed"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/reader"
               className="bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-6 py-3 rounded-xl font-semibold text-lg hover:opacity-90 transition"
             >
-              Get started
+              Open Reader
             </a>
             <span className="text-sm text-zinc-400">Self-hosted · Free · Open source</span>
           </div>
