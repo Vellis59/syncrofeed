@@ -72,6 +72,27 @@ export default function AppPage() {
     alert(`${result.added} new article(s) found`);
   };
 
+  const handleRefreshAll = async () => {
+    const res = await fetch("/api/feeds/refresh-all", { method: "POST" });
+    const data = await res.json();
+    await loadFeeds();
+    await loadArticles();
+    if (data.errors?.length) {
+      alert(`Refreshed. ${data.totalAdded} new articles. ${data.errors.length} feed(s) failed.`);
+    } else {
+      alert(`Refreshed. ${data.totalAdded} new articles.`);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    await fetch("/api/articles/mark-all-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedId: selectedFeed }),
+    });
+    await loadArticles();
+  };
+
   const handleSelectArticle = async (id: number) => {
     const article = await fetchArticle(id);
     setSelectedArticle(article);
@@ -106,6 +127,8 @@ export default function AppPage() {
         onAddFeed={() => setShowAddFeed(true)}
         onDeleteFeed={handleDeleteFeed}
         onRefreshFeed={handleRefreshFeed}
+        onRefreshAll={handleRefreshAll}
+        onMarkAllRead={handleMarkAllRead}
         onImportComplete={async () => {
           await loadFeeds();
           await loadArticles();

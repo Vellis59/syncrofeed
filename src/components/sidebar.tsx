@@ -9,6 +9,8 @@ interface SidebarProps {
   onAddFeed: () => void;
   onDeleteFeed: (id: number) => void;
   onRefreshFeed: (id: number) => void;
+  onRefreshAll: () => void;
+  onMarkAllRead: () => void;
   onImportComplete: () => void;
   filterUnread: boolean;
   filterStarred: boolean;
@@ -24,6 +26,8 @@ export function Sidebar({
   onAddFeed,
   onDeleteFeed,
   onRefreshFeed,
+  onRefreshAll,
+  onMarkAllRead,
   filterUnread,
   filterStarred,
   onToggleUnread,
@@ -84,6 +88,24 @@ export function Sidebar({
         >
           ⭐ Starred
         </button>
+      </div>
+
+      {/* Bulk Actions */}
+      <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex gap-2">
+          <button
+            onClick={onRefreshAll}
+            className="flex-1 text-center px-2 py-1.5 text-xs rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
+          >
+            🔄 Refresh all
+          </button>
+          <button
+            onClick={onMarkAllRead}
+            className="flex-1 text-center px-2 py-1.5 text-xs rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
+          >
+            ✅ Mark all read
+          </button>
+        </div>
       </div>
 
       {/* Import/Export */}
