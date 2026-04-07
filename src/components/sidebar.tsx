@@ -102,11 +102,24 @@ export function Sidebar({
                 formData.append("file", file);
                 try {
                   const res = await fetch("/api/opml", { method: "POST", body: formData });
-                  const result = await res.json();
-                  alert(`Imported: ${result.imported}, Skipped: ${result.skipped}`);
+                  const contentType = res.headers.get("content-type") || "";
+                  const isJson = contentType.includes("application/json");
+                  const payload = isJson ? await res.json() : await res.text();
+
+                  if (!res.ok) {
+                    const message = typeof payload === "string"
+                      ? payload.slice(0, 300)
+                      : payload?.error || "Import failed";
+                    throw new Error(message);
+                  }
+
+                  const imported = payload?.imported ?? 0;
+                  const skipped = payload?.skipped ?? 0;
+                  const errors = Array.isArray(payload?.errors) ? payload.errors.length : 0;
+                  alert(`Imported: ${imported}, Skipped: ${skipped}${errors ? `, Errors: ${errors}` : ""}`);
                   onImportComplete();
-                } catch {
-                  alert("Import failed");
+                } catch (error) {
+                  alert(error instanceof Error ? error.message : "Import failed");
                 }
                 e.target.value = "";
               }}

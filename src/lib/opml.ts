@@ -24,10 +24,11 @@ export async function parseOpml(xml: string): Promise<{ title: string; feeds: { 
   const feedList: { title: string; url: string; siteUrl?: string }[] = [];
 
   function extractFeeds(outlines: OpmlOutline[]) {
-    for (const outline of outlines) {
+    for (const outline of outlines.filter(Boolean)) {
+      if (!outline?.$) continue;
       if (outline.$.xmlUrl) {
         feedList.push({
-          title: outline.$.title || outline.$.text || "",
+          title: outline.$.title || outline.$.text || outline.$.xmlUrl || "",
           url: outline.$.xmlUrl,
           siteUrl: outline.$.htmlUrl,
         });
@@ -38,7 +39,10 @@ export async function parseOpml(xml: string): Promise<{ title: string; feeds: { 
     }
   }
 
-  extractFeeds(Array.isArray(body) ? body : [body]);
+  extractFeeds(Array.isArray(body) ? body : body ? [body] : []);
+  if (feedList.length === 0) {
+    throw new Error("No feeds found in OPML file");
+  }
   return { title, feeds: feedList };
 }
 
