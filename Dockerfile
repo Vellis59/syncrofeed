@@ -6,7 +6,7 @@ RUN corepack enable
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm config set onlyBuiltDependencies better-sqlite3 && pnpm install --frozen-lockfile
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,9 +17,10 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN corepack enable
+RUN apk add --no-cache python3 make g++
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm config set onlyBuiltDependencies better-sqlite3 && pnpm install --prod --frozen-lockfile && pnpm rebuild better-sqlite3
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
