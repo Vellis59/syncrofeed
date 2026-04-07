@@ -7,9 +7,16 @@ import { fetchFeed, discoverFeedUrl } from "@/lib/feed-fetcher";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const db = getDb();
-  const allFeeds = await db.select().from(feeds).orderBy(feeds.title);
-  return NextResponse.json(allFeeds);
+  try {
+    const db = getDb();
+    const allFeeds = await db.select().from(feeds).orderBy(feeds.title);
+    return NextResponse.json(allFeeds);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch feeds" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
