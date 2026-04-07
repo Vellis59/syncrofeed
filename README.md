@@ -60,6 +60,26 @@ Then use:
 
 This enables compatibility with Fever clients like Reeder or Fiery Feeds.
 
+## Docker
+
+Run Syncrofeed with Docker:
+
+```bash
+docker compose up -d
+```
+
+Then open:
+- `http://localhost:3000` — landing page
+- `http://localhost:3000/reader` — RSS reader
+
+Data is stored in the local `./data` folder and mounted into the container.
+
+Container image (planned):
+
+```text
+ghcr.io/vellis59/syncrofeed:latest
+```
+
 ## Project Status
 
 🚧 Early development — foundations being built.

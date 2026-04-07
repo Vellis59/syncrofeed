@@ -1,0 +1,14 @@
+version: '3.9'
+
+services:
+  syncrofeed:
+    build: .
+    container_name: syncrofeed
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      SYNCROFEED_FEVER_PASSWORD: changeme
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
