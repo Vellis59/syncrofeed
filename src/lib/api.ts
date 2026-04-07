@@ -4,6 +4,7 @@ const API_BASE = "/api";
 
 export async function fetchFeeds(): Promise<Feed[]> {
   const res = await fetch(`${API_BASE}/feeds`);
+  if (!res.ok) throw new Error(`Failed to fetch feeds: ${res.status}`);
   return res.json();
 }
 
@@ -39,11 +40,13 @@ export async function fetchArticles(params?: {
   if (params?.starred) searchParams.set("starred", "true");
   if (params?.unread) searchParams.set("unread", "true");
   const res = await fetch(`${API_BASE}/articles?${searchParams}`);
+  if (!res.ok) throw new Error(`Failed to fetch articles: ${res.status}`);
   return res.json();
 }
 
 export async function fetchArticle(id: number): Promise<Article> {
   const res = await fetch(`${API_BASE}/articles/${id}`);
+  if (!res.ok) throw new Error(`Failed to fetch article: ${res.status}`);
   return res.json();
 }
 
