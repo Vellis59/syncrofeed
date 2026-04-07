@@ -8,9 +8,7 @@ import {
   getFeverGroups,
   getFeverLinks,
 } from "@/lib/fever";
-import { getDb } from "@/lib/db";
-import { articles } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { markFeverItem } from "@/lib/fever";
 
 export const dynamic = "force-dynamic";
 
@@ -50,17 +48,7 @@ export async function POST(req: NextRequest) {
 
   if (mark === "item" && id && as) {
     const articleId = Number(id);
-    const db = getDb();
-
-    if (as === "read") {
-      await db.update(articles).set({ read: true }).where(eq(articles.id, articleId));
-    } else if (as === "unread") {
-      await db.update(articles).set({ read: false }).where(eq(articles.id, articleId));
-    } else if (as === "saved") {
-      await db.update(articles).set({ starred: true }).where(eq(articles.id, articleId));
-    } else if (as === "unsaved") {
-      await db.update(articles).set({ starred: false }).where(eq(articles.id, articleId));
-    }
+    await markFeverItem(articleId, as);
 
     return NextResponse.json({ api_version: 3, auth: 1 });
   }

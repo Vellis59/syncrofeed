@@ -1,62 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { feeds, articles } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { getDb, persistDb } from "@/lib/db";
 import { fetchFeed } from "@/lib/feed-fetcher";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const db = getDb();
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
-  await db.delete(feeds).where(eq(feeds.id, Number(id)));
+  db.run(`DELETE FROM feeds WHERE id = ?`, [Number(id)]);
+  await persistDb();
   return NextResponse.json({ ok: true });
 }
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const db = getDb();
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
   const feedId = Number(id);
+  const result = db.exec(`SELECT * FROM feeds WHERE id = ${feedId}`);
+  if (!result.length || !result[0].values.length) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
 
-  const [feed] = await db.select().from(feeds).where(eq(feeds.id, feedId));
-  if (!feed) {
-    return NextResponse.json({ error: "Feed not found" }, { status: 404 });
-  }
+  const [row] = result[0].values;
+  const feedUrl = String(row[2]);
+  const parsed = await fetchFeed(feedUrl);
 
-  const parsed = await fetchFeed(feed.url);
+  const existingStmt = db.prepare(`SELECT url FROM articles WHERE feed_id = ?`);
+  existingStmt.bind([feedId]);
+  const existing = new Set<string>();
+  while (existingStmt.step()) existing.add(String(existingStmt.get()[0]));
+  existingStmt.free();
 
-  const existing = await db
-    .select({ url: articles.url })
-    .from(articles)
-    .where(eq(articles.feedId, feedId));
-  const existingUrls = new Set(existing.map((a) => a.url));
-
-  const newItems = parsed.items.filter((item) => item.url && !existingUrls.has(item.url));
-
-  if (newItems.length > 0) {
-    await db.insert(articles).values(
-      newItems.map((item) => ({
-        feedId,
-        title: item.title,
-        url: item.url,
-        content: item.content,
-        summary: item.summary,
-        author: item.author,
-        publishedAt: item.publishedAt,
-      }))
+  let added = 0;
+  for (const item of parsed.items.filter((i) => i.url && !existing.has(i.url))) {
+    db.run(
+      `INSERT INTO articles (feed_id, title, url, content, summary, author, published_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [feedId, item.title, item.url, item.content || null, item.summary || null, item.author || null, item.publishedAt ? Math.floor(item.publishedAt.getTime() / 1000) : null]
     );
+    added++;
   }
 
-  await db
-    .update(feeds)
-    .set({ lastFetchedAt: new Date() })
-    .where(eq(feeds.id, feedId));
-
-  return NextResponse.json({ added: newItems.length });
+  db.run(`UPDATE feeds SET last_fetched_at = ? WHERE id = ?`, [Math.floor(Date.now() / 1000), feedId]);
+  await persistDb();
+  return NextResponse.json({ added });
 }

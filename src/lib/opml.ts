@@ -1,17 +1,9 @@
 import { parseStringPromise, Builder } from "xml2js";
-import { getDb } from "./db";
-import { feeds } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { getDb, persistDb } from "./db";
 import { fetchFeed } from "./feed-fetcher";
 
 interface OpmlOutline {
-  $: {
-    text?: string;
-    title?: string;
-    xmlUrl?: string;
-    htmlUrl?: string;
-    type?: string;
-  };
+  $: { text?: string; title?: string; xmlUrl?: string; htmlUrl?: string; type?: string };
   outline?: OpmlOutline[];
 }
 
@@ -20,67 +12,42 @@ export async function parseOpml(xml: string): Promise<{ title: string; feeds: { 
   const opml = result.opml || result.OPML;
   const title = opml?.head?.title || "Imported OPML";
   const body = opml?.body?.outline || [];
-
   const feedList: { title: string; url: string; siteUrl?: string }[] = [];
 
   function extractFeeds(outlines: OpmlOutline[]) {
     for (const outline of outlines.filter(Boolean)) {
       if (!outline?.$) continue;
-      if (outline.$.xmlUrl) {
-        feedList.push({
-          title: outline.$.title || outline.$.text || outline.$.xmlUrl || "",
-          url: outline.$.xmlUrl,
-          siteUrl: outline.$.htmlUrl,
-        });
-      }
-      if (outline.outline) {
-        extractFeeds(Array.isArray(outline.outline) ? outline.outline : [outline.outline]);
-      }
+      if (outline.$.xmlUrl) feedList.push({ title: outline.$.title || outline.$.text || outline.$.xmlUrl, url: outline.$.xmlUrl, siteUrl: outline.$.htmlUrl });
+      if (outline.outline) extractFeeds(Array.isArray(outline.outline) ? outline.outline : [outline.outline]);
     }
   }
 
   extractFeeds(Array.isArray(body) ? body : body ? [body] : []);
-  if (feedList.length === 0) {
-    throw new Error("No feeds found in OPML file");
-  }
+  if (feedList.length === 0) throw new Error("No feeds found in OPML file");
   return { title, feeds: feedList };
 }
 
-export async function importOpml(xml: string): Promise<{ imported: number; skipped: number; errors: string[] }> {
-  const { feeds: feedList } = await parseOpml(xml);
-  const db = getDb();
+export async function importOpml(xml: string) {
+  const { feeds } = await parseOpml(xml);
+  const db = await getDb();
   const errors: string[] = [];
   let imported = 0;
   let skipped = 0;
 
-  for (const feed of feedList) {
+  for (const feed of feeds) {
+    const exists = db.exec(`SELECT id FROM feeds WHERE url = '${feed.url.replace(/'/g, "''")}' LIMIT 1`);
+    if (exists.length && exists[0].values.length) {
+      skipped++;
+      continue;
+    }
     try {
-      // Check if already exists
-      const existing = await db.select().from(feeds).where(eq(feeds.url, feed.url));
-      if (existing.length > 0) {
-        skipped++;
-        continue;
-      }
-
-      // Try to fetch and add
       const parsed = await fetchFeed(feed.url);
-      await db.insert(feeds).values({
-        title: parsed.title || feed.title,
-        url: feed.url,
-        siteUrl: parsed.siteUrl || feed.siteUrl,
-        description: parsed.description,
-        lastFetchedAt: new Date(),
-      });
+      db.run(`INSERT INTO feeds (title, url, site_url, description, last_fetched_at) VALUES (?, ?, ?, ?, ?)`, [parsed.title || feed.title, feed.url, parsed.siteUrl || feed.siteUrl || null, parsed.description || null, Math.floor(Date.now() / 1000)]);
       imported++;
     } catch (err) {
       errors.push(`${feed.url}: ${err instanceof Error ? err.message : "Failed"}`);
-      // Still add with metadata from OPML even if fetch fails
       try {
-        await db.insert(feeds).values({
-          title: feed.title,
-          url: feed.url,
-          siteUrl: feed.siteUrl,
-        });
+        db.run(`INSERT INTO feeds (title, url, site_url) VALUES (?, ?, ?)`, [feed.title, feed.url, feed.siteUrl || null]);
         imported++;
       } catch {
         skipped++;
@@ -88,34 +55,20 @@ export async function importOpml(xml: string): Promise<{ imported: number; skipp
     }
   }
 
+  await persistDb();
   return { imported, skipped, errors };
 }
 
 export async function generateOpml(): Promise<string> {
-  const db = getDb();
-  const allFeeds = await db.select().from(feeds).orderBy(feeds.title);
-
-  const outlines = allFeeds.map((feed) => ({
-    $: {
-      type: "rss",
-      text: feed.title,
-      title: feed.title,
-      xmlUrl: feed.url,
-      htmlUrl: feed.siteUrl || "",
-    },
-  }));
-
-  const opml = {
-    xml: { $: { version: "1.0", encoding: "UTF-8" } },
-    opml: {
-      $: { version: "2.0" },
-      head: {
-        title: "Syncrofeed Subscriptions",
-      },
-      body: { outline: outlines },
-    },
-  };
+  const db = await getDb();
+  const stmt = db.prepare(`SELECT * FROM feeds ORDER BY title ASC`);
+  const outlines = [] as any[];
+  while (stmt.step()) {
+    const feed = stmt.getAsObject();
+    outlines.push({ $: { type: "rss", text: feed.title, title: feed.title, xmlUrl: feed.url, htmlUrl: feed.site_url || "" } });
+  }
+  stmt.free();
 
   const builder = new Builder({ xmldec: { version: "1.0", encoding: "UTF-8" } });
-  return builder.buildObject(opml);
+  return builder.buildObject({ opml: { $: { version: "2.0" }, head: { title: "Syncrofeed Subscriptions" }, body: { outline: outlines } } });
 }
